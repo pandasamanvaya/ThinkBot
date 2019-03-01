@@ -1,2 +1,2 @@
 # ThinkBot
-An bot for playing ultimate tic tac toe
+A bot for playing ultimate tic tac toe
