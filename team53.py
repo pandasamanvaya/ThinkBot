@@ -1,6 +1,6 @@
 import math
 import time
-
+import random
 
 def mul(x, y, mod):
     return (x % mod * y % mod) % mod
@@ -51,17 +51,8 @@ def board_hash(hashcode, new_move, player):
     return curr_hash
 
 
-def uct(w_i, n_i, N_i):
-    c = math.sqrt(2)
-    return (w_i/n_i)+c*math.sqrt((math.log(N_i))/n_i)
 
-
-class Node:
-    def __init__(self):
-        self.wins = 0
-        self.visited = 0
-        self.hashcode = 0
-
+total_traversals = 0
 
 class BigBoard:
 
@@ -103,84 +94,144 @@ class BigBoard:
 
 
 start_time = time.time()
+def uct(w_i, n_i, N_i):
+    c = math.sqrt(2)
+    return (w_i/n_i)+c*math.sqrt((math.log(N_i))/n_i)
 
+
+class Node:
+    def __init__(self):
+        #self.wins = 0
+        self.visited = 0
+        self.hashcode = 0
+        self.val = random.randint(10, 200)
+
+def main():
+    board = BigBoard()
+    global total_traversals
+    root = Node()
+    root.hashcode = init_hash()
+    old_move = [1,4,4]
+    mcts(root, old_move, 5)
+
+    for i in explored:
+        print(i.hashcode)
+
+    print(total_traversals)
+    print("Time taken = ", time.time() - start_time)
 
 def time_out():
     cur_time = time.time()
-    if (cur_time - statr_time) > 23.7:
+    if (cur_time - start_time) > 0.1:
         return True
     return False
 
 
-def main():
-    board = BigBoard()
-    h = init_hash()
-
-
-global total_traversals
-
-
-def mcts(root):
-    while !time_out():
-        node = traverse(root)
-        end_node = rollout(node)
-        backpropagate(node, end_node)
-    total_traversals = 0
-
-
-def bfs(node, old_move, player, first, mn):
-    if first:
-        i = 3 * (old_move[1] % 3)
-        j = 3 * (old_move[2] % 3)
-        mn = j
-        cnt = 18*i + j
-        first = False
-    else:
-        i = old_move[1]
-        j = old_move[2]
-        cnt = 18*i+j
-
-    hashcode = add(node.hashcode, mul(modulo_exp(x, cnt*j+i,
-                                                 MOD), 2, MOD), MOD)
-    child = Node()
-    child.hashcode = hashcode
-
-    if old_move[0] == 0:
-        old_move[0] += 1
-    else:
-        old_move[0] = 0
-        if old_move[2] % 3 == 2:
-            old_move[1] += 1
-        if old_move[2]+1 > mn + 2:
-            old_move[2] = mn
-        else:
-            old_move[2] += 1
-
+def change_player(player):
     if player == 5:
-        player = 3
-    else:
-        player = 5
-    if old_move[1] % 3 != 2 and old_move[2] % 3 != 2:
-        bfs(node, old_move, player, first, mn)
+        return 3
 
+    return 5
+
+def mcts(root, old_move, player):
+    while not(time_out()):
+        traverse(root, old_move, player)
+        #end_node = rollout(node)
+        #backpropagate(node, end_node)
+
+explored = []
 
 def traverse(node, old_move, player):
     mx = 0
     child = 0
-    total_traversals += 1
     bfs(node, old_move, player, True, 0)
-    for i in range(18):
+    #for i in explored:
 
         # if uct(node.wins, node.visited, total_traversals) > mx:
         #     mx = uct(node.wins, node.visited, total_traversals)
         #     child = i
-traverse(node)
+    #traverse(node)
+
+def bfs(node, old_move, player, first, mn):
+    global total_traversals
+    
+    if first:
+        i = 3 * (old_move[1] % 3)
+        j = 3 * (old_move[2] % 3)
+        mn = j
+        cnt = 18*i + j + 8*old_move[0]
+        print("First move", i, j)
+    else:
+        i = old_move[1]
+        j = old_move[2]
+        cnt = 18*i + j + 8*old_move[0]
+
+    hashcode = add(node.hashcode, mul(modulo_exp(x, cnt*j+i,
+                                                 MOD), player-2, MOD), MOD)
+    child = Node()
+    child.hashcode = hashcode
+
+    if first:
+        first = False
+        old_move = [0, i, j]
+    else:            
+        if old_move[0] == 0:
+            old_move[0] += 1
+        else:
+            old_move[0] = 0
+            if old_move[2] % 3 == 2:
+                old_move[1] = (old_move[1]+1)%9
+            if old_move[2]+1 > mn + 2:
+                old_move[2] = mn
+            else:
+                old_move[2] += 1
+
+    total_traversals += 1
+    #print(old_move)
+    explored.append(child)
+    rollout(child, old_move, player)
+    child.visited += 1
+    #player = change_player(player)
+    if old_move[1] != 2*mn:
+        print(old_move)
+        bfs(node, old_move, player, first, mn)
+    else:
+        print(mn)
 
 
-def rollout(node):
 
+exploit = []
+move = []
 
-def backpropagate(start_node, end_node):
+def rollout(node, old_move, player):
+    depth = 100
+    exploit = []
+    while depth > 0:
+        print(old_move)
+        exploit.append(node)
+        move.append(old_move)
+
+        i = 3 * (old_move[1] % 3)
+        j = 3 * (old_move[2] % 3)
+        
+        i = random.randint(i, i+2)
+        j = random.randint(j, j+2)
+        cnt = 18*i + j + 8*old_move[0]
+
+        child = Node()
+        child.hashcode = add(node.hashcode, mul(modulo_exp(x, cnt*j+i,
+                                                 MOD), player-2, MOD), MOD)
+        depth -= 1
+        old_move = [(i^j)%2, i, j]
+        node = child
+        player = change_player(player)
+    #     if child.val > 100 and depth > 50:
+    #         break
+
+    # backpropagate(child.val)
+
+def backpropagate(val):
+    pass
 
 
 if __name__ == "__main__":
